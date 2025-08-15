@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>N.R.T. — Dashboard</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --accent:#2563eb;
+      --accent-2:#16a34a;
+      --warn:#ef4444;
+      --ring:#c7d2fe;
+      --shadow:0 6px 20px rgba(28,39,54,.08);
+      --radius:14px;
+      --radius-sm:10px;
+      --maxw:1040px;
+      --pad:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:var(--maxw); margin:26px auto; padding:0 16px;}
+    header{
+      display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;
+      padding: 14px 16px; background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    }
+    h1{font-size:22px; margin:0}
+    .sub{color:var(--muted); font-weight:500; font-size:13px}
+    .btn{
+      appearance:none; border:0; background:var(--accent); color:#fff; padding:10px 14px; border-radius:10px;
+      font-weight:600; cursor:pointer; box-shadow:var(--shadow);
+    }
+    .btn:active{transform:translateY(1px)}
+    .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+    .card{
+      background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:var(--pad);
+    }
+    .stat .label{color:var(--muted); font-weight:600; margin-bottom:8px}
+    .stat .value{font-size:26px; font-weight:800; letter-spacing:.3px}
+    .row{
+      display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;
+    }
+    .row-1{margin-top:14px;}
+    .chart-box{height:220px; display:flex; align-items:center; justify-content:center;}
+    canvas{width:100% !important; height:220px !important;}
+    @media (max-width:900px){
+      .grid-3{grid-template-columns:1fr;}
+      .row{grid-template-columns:1fr;}
+      canvas{height:200px !important;}
+    }
+  </style>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512x512.png">
+  <meta name="theme-color" content="#ffffff">
+<style id="nrt-design-overrides">
+
+/* === N.R.T. Design Overrides (Design-only) ===================================
+   - Make all inputs consistent (incl. readonly: invoice, number, address, grand)
+   - Make product row (qty/price/total) less bulky but finger-friendly
+   - Keep system dark-mode support
+============================================================================= */
+
+:root{
+  --inp-h: 50px;
+  --inp-r: 12px;
+  --inp-b: 1.5px;
+  --border: #e5e7eb;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #3b82f6;
+  --ring: rgba(59,130,246,.25);
+  --soft: #f8fafc;
+}
+
+/* Dark mode tokens */
+@media (prefers-color-scheme: dark){
+  :root{
+    /* Keep light UI even in dark mode (design-only) */
+    --border: #d1d5db;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --soft: #f8fafc;
+    --ring: rgba(165,180,252,.35);
+  }
+}
+
+
+/* Global input look */
+body .wrap input[type="text"],
+body .wrap input[type="number"],
+body .wrap input[type="date"],
+body .wrap select,
+.section table td input {
+  min-height: var(--inp-h) !important;
+  font-size: 16px !important;
+  padding: 10px 12px !important;
+  border-radius: var(--inp-r) !important;
+  border: var(--inp-b) solid var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+/* Readonly fields should look like normal inputs */
+#invoice, #contactPhone, #contactAddress, #grand, #savedSearch,
+body .wrap input[readonly]{
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  opacity: 1 !important;
+  min-height: var(--inp-h) !important;
+  padding: 10px 12px !important;
+  border-radius: var(--inp-r) !important;
+  border: var(--inp-b) solid var(--border) !important;
+}
+
+/* Search inputs consistent */
+#contactSearch{ min-height: var(--inp-h) !important; }
+
+/* Product row — slimmer */
+.section table tbody td{ padding-top: 8px !important; padding-bottom: 8px !important; }
+
+/* Quantity group: compact but usable */
+.qty{
+  display:inline-flex; align-items:center; gap:8px;
+  padding: 4px 6px !important;
+  border: var(--inp-b) solid var(--border) !important;
+  border-radius: 999px !important;
+  background: var(--surface) !important;
+}
+.qty .qtyInput{
+  width: 90px !important; height: 32px !important;
+  border:0 !important; background:transparent !important;
+  text-align:center !important; font-size:16px !important; padding:0 !important;
+}
+.qty .inc, .qty .dec{
+  width: 28px !important; height: 28px !important; line-height: 24px !important;
+  border-radius: 999px !important;
+  border: var(--inp-b) solid var(--border) !important;
+  background: var(--soft) !important; font-size:18px !important; padding:0 !important;
+  display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+}
+
+/* Numeric fields align right */
+.priceInput, .lineTotal, #due{ text-align:right !important; font-variant-numeric: tabular-nums; }
+.priceInput, .lineTotal{ min-width: 120px !important; }
+#due{ min-width: 180px !important; }
+
+/* Focus ring */
+body .wrap input[type="text"]:focus,
+body .wrap input[type="number"]:focus,
+body .wrap input[type="date"]:focus,
+body .wrap select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--ring) !important;
+  outline: none !important;
+}
+
+
+/* === Mobile responsiveness for items table (design-only) === */
+@media (max-width: 640px){
+  /* Collapse table into cards to avoid horizontal scroll */
+  .section table thead{ display:none !important; }
+  .section table, .section table tbody, .section table tr, .section table td{ display:block !important; width:100% !important; }
+  .section table tbody tr{ background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px; margin-bottom:10px; }
+  .section table tbody td{ border:0 !important; padding:6px 0 !important; background:transparent !important; }
+  .section table tbody td.right{ text-align:left !important; }
+  /* Inputs use full width on mobile */
+  .priceInput, .lineTotal, #due{ min-width:0 !important; width:100% !important; }
+  /* Quantity control smaller */
+  .qty .qtyInput{ width:64px !important; }
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>N.R.T.</h1>
+        <div class="sub">Sales Dashboard</div>
+      </div>
+      <button class="btn" onclick="location.href='index.html'">Switch to Form</button>
+    </header>
+
+    <!-- Stats -->
+    <div class="grid-3">
+      <div class="card stat">
+        <div class="label">Total Revenue</div>
+        <div class="value" id="statRevenue">BDT 0.00</div>
+      </div>
+      <div class="card stat">
+        <div class="label">Outstanding Due</div>
+        <div class="value" id="statDue">BDT 0.00</div>
+      </div>
+      <div class="card stat">
+        <div class="label">Total Shops</div>
+        <div class="value" id="statShops">0</div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="row">
+      <div class="card">
+        <div class="label" style="margin-bottom:8px">Total Revenue by Date</div>
+        <div class="chart-box"><canvas id="revByDate"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="label" style="margin-bottom:8px">Top Product</div>
+        <div class="chart-box"><canvas id="topProduct"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="row row-1">
+      <div class="card" style="grid-column:1 / -1">
+        <div class="label" style="margin-bottom:8px">Sales by Store</div>
+        <div class="chart-box"><canvas id="salesByStore"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+
+// Chart.js rendering for dashboard; reads data from localStorage (nrt_entries_v2 etc.)
+(function(){
+  function fmtBDT(n){ return 'BDT ' + Number(n||0).toFixed(2); }
+  function readJSON(key, def){ try{ const v = JSON.parse(localStorage.getItem(key)); return v ?? def; } catch(e){ return def; } }
+
+  function getEntries(){
+    const keys = ['nrt_entries_v2','nrt_entries','entries','NRT_ENTRIES','NRT:entries'];
+    for(const k of keys){ const v = readJSON(k, null); if(Array.isArray(v)) return v; }
+    // Heuristic fallback
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i); const v = readJSON(k, null);
+      if(Array.isArray(v) && v.length && typeof v[0]==='object' && ('items' in v[0])) return v;
+    }
+    return [];
+  }
+  function getContactsCount(){
+    const contacts = readJSON('nrt_contacts', []);
+    if(Array.isArray(contacts) && contacts.length){
+      const norm = p => String(p||'').replace(/\D/g,'').slice(-11); // last 11 digits
+      const s = new Set(contacts.map(c => norm(c.phone)).filter(Boolean));
+      return s.size;
+    }
+    const norm = p => String(p||'').replace(/\D/g,'').slice(-11);
+    const s = new Set(getEntries().map(e => norm(e.phone)).filter(Boolean));
+    return s.size;
+  }
+
+  const entries = getEntries();
+  let totalGrand=0, totalDue=0;
+  entries.forEach(e=>{ totalGrand += Number(e.grand||0); totalDue += Number(e.due||0); });
+  const revEl=document.getElementById('statRevenue'); if(revEl) revEl.textContent = fmtBDT(totalGrand);
+  const dueEl=document.getElementById('statDue'); if(dueEl) dueEl.textContent = fmtBDT(totalDue);
+  const shopEl=document.getElementById('statShops'); if(shopEl) shopEl.textContent = String(getContactsCount());
+
+  // Revenue by date
+  const byDate = new Map();
+  entries.forEach(e=>{
+    const d=(e.date||'').slice(0,10); if(!d) return;
+    byDate.set(d, (byDate.get(d)||0) + Number(e.grand||0));
+  });
+  const dateLabels = Array.from(byDate.keys()).sort();
+  const dateValues = dateLabels.map(d=>byDate.get(d));
+  // Trend line (simple linear regression on indices 1..n)
+  function trend(vals){
+    const n=vals.length; if(n===0) return [];
+    let sx=0, sy=0, sxy=0, sxx=0;
+    for(let i=0;i<n;i++){ const x=i+1, y=Number(vals[i]||0); sx+=x; sy+=y; sxy+=x*y; sxx+=x*x; }
+    const denom = n*sxx - sx*sx; const b = denom? (n*sxy - sx*sy)/denom : 0; const a = (sy - b*sx)/n;
+    return Array.from({length:n}, (_,i)=> a + b*(i+1));
+  }
+  const trendValues = trend(dateValues);
+
+  // Top product by revenue (type)
+  const typeMap = new Map();
+  entries.forEach(e=> (e.items||[]).forEach(it=>{
+    const type=(it.type||'').trim() || 'Unknown';
+    const rev = Number(it.qty||0) * Number(it.price||0);
+    typeMap.set(type, (typeMap.get(type)||0)+rev);
+  }));
+  const topLabels = Array.from(typeMap.keys());
+  const topValues = topLabels.map(l=>typeMap.get(l));
+
+  // Sales by store (group by unique phone number; label shows "Name • Number")
+  const storeMap = new Map(); // key: normalized phone, value: revenue
+  const labelMap = new Map(); // key -> display label
+  const normPhone = p => String(p||'').replace(/\D/g,'').slice(-11);
+  entries.forEach(e=>{
+    const phone = normPhone(e.phone);
+    const name = (e.store||'').trim() || 'Unknown';
+    const label = phone ? `${name} • ${phone}` : name;
+    const key = phone || label; // prefer phone, fall back to label
+    storeMap.set(key, (storeMap.get(key)||0) + Number(e.grand||0));
+    if (!labelMap.has(key)) labelMap.set(key, label);
+  });
+  const storeArr = Array.from(storeMap.entries()).sort((a,b)=>b[1]-a[1]);
+  const storeLabels = storeArr.map(([k])=> labelMap.get(k) || k);
+  const storeValues = storeArr.map(([,v])=> v);
+
+  // Build charts
+  const revCtx = document.getElementById('revByDate')?.getContext('2d');
+  const donutCtx = document.getElementById('topProduct')?.getContext('2d');
+  const storeCtx = document.getElementById('salesByStore')?.getContext('2d');
+
+  if(revCtx){
+    new Chart(revCtx, {
+      type: 'line',
+      data: { labels: dateLabels, datasets: [
+        { label:'Total Revenue (BDT)', data: dateValues, tension:0.25, fill:false },
+        { label:'Trend Line', data: trendValues, borderDash:[6,6], pointRadius:0, tension:0, fill:false }
+      ]},
+      options: { maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } }, scales:{ y:{ beginAtZero:true } } }
+    });
+  }
+  if(donutCtx){
+    new Chart(donutCtx, {
+      type: 'doughnut',
+      data: { labels: topLabels, datasets: [{ data: topValues }]},
+      options: { maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+    });
+  }
+  if(storeCtx){
+    new Chart(storeCtx, {
+      type: 'bar',
+      data: { labels: storeLabels, datasets: [{ label:'Revenue (BDT)', data: storeValues }]},
+      options: { indexAxis:'y', maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true } } }
+    });
+  }
+})();
+
+</script>
+</body>
+</html>
